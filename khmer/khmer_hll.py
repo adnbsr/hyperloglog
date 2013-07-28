@@ -1,6 +1,6 @@
 import khmer
 import screed
-
+import random
 
 from hashlib import sha1
 import bisect
@@ -16,6 +16,8 @@ class KmerCardinality(object):
 		self.num_bins= 1 << self.bits
 		self.bit_bins=[ 1L << i for i in range(160 - self.bits + 1) ]
 		self.estimators = [0 for i in range(self.num_bins)]
+		num=random.randint( 4**(k/4), 4**(self.k)-1)
+		self.large_prime=self.get_large_prime(num,self.is_prime)
 	
 	def get_alpha(self, b):
 		
@@ -31,11 +33,35 @@ class KmerCardinality(object):
 
 		return 0.7213 / (1.0 + 1.079 / (1 << b))
 
+	def mrange(self,start, stop, step):
+		i = start
+		while i < stop:
+			yield i
+			i += step
+	
+	def is_prime(self,n):
+		if n == 2:
+			return True
+		if (n < 2) or (n % 2 == 0):
+			return False
+		return all(n % i for i in self.mrange(3, int(math.sqrt(n)) + 1, 2))
+
+	def get_large_prime(self,n, tester):
+		if tester(n):
+			n += 1
+		if (n % 2 == 0) and (n != 2):
+			n += 1
+		while True:
+			if tester(n):
+				break
+			n += 2
+		return n
 
 	#def get_word(self, **args):
 	def add(self,khmer_hash):
 
-		
+
+		khmer_hash = khmer_hash % self.large_prime
 
 		bin = khmer_hash & ((1 << self.bits) - 1)
 		remaining_bits = khmer_hash >> self.bits
@@ -63,6 +89,7 @@ class KmerCardinality(object):
 		n=kt.consume(sequence)
 		for i in range(n):
 			self.add(khmer.forward_hash(sequence[i:i+self.k],self.k))
+
 
 
 

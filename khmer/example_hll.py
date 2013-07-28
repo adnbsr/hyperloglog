@@ -5,13 +5,13 @@ from khmer_hll import KmerCardinality
 
 k=13
 
-counter=KmerCardinality(10,k)
+counter=KmerCardinality(8,k)
 
 alphabet={0:'A',1:'T',2:'G',3:'C'}
 
 given_string=''
 
-for i in range(100000):
+for i in range(1000000):
 	given_string+=alphabet[random.randint(0,3)]
 
 
@@ -27,7 +27,6 @@ n=kt.consume(given_string)
 for i in range(n):
 	d[given_string[i:i+k]] += 1
 
-
-
+print 'Large Prime:',counter.large_prime
 print 'Real:',round(len(d))
 print 'Estimated:',counter.cardinality()
