@@ -8,7 +8,7 @@ import math
 
 class KmerCardinality(object):
 
-	def __init__(self,b,k):
+	def __init__(self,b,k,lower_limit,upper_limit):
 		self.k=k
 		self.b=b
 		self.bits=self.b
@@ -16,7 +16,7 @@ class KmerCardinality(object):
 		self.num_bins= 1 << self.bits
 		self.bit_bins=[ 1L << i for i in range(160 - self.bits + 1) ]
 		self.estimators = [0 for i in range(self.num_bins)]
-		num=random.randint( 4**(k/4), 4**(self.k)-1)
+		num=random.randint( lower_limit , upper_limit)
 		self.large_prime=self.get_large_prime(num,self.is_prime)
 	
 	def get_alpha(self, b):
@@ -82,7 +82,10 @@ class KmerCardinality(object):
 		elif E <= float(1L << 160) / 30.0:
 			return round(E)
 		else:
-			return -(1L << 160) * math.log(1.0 - E / (1L << 160))
+			try:
+				return -(1L << 160) * math.log(1.0 - E / (1L << 160))
+			except ValueError:
+				pass
 
 	def consume(self,sequence):
 		kt=khmer.new_ktable(self.k)

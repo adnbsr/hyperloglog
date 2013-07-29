@@ -36,6 +36,7 @@ class KmerCardinality(object):
 	def add(self,word):
 		
 		hash = long(sha1(word).hexdigest(), 16)
+		
 		bin = hash & ((1 << self.bits) - 1)
 		remaining_bits = hash >> self.bits
 		count = self.rho(remaining_bits)

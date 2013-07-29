@@ -1,17 +1,20 @@
+from pylab import *
 import khmer
 import random
 from collections import defaultdict
 from khmer_hll import KmerCardinality
 
-k=13
 
-counter=KmerCardinality(8,k)
+
+k=5
+
+counter=KmerCardinality(8,k,4**(k/8),4**(k/2))
 
 alphabet={0:'A',1:'T',2:'G',3:'C'}
 
 given_string=''
 
-for i in range(1000000):
+for i in range(10000):
 	given_string+=alphabet[random.randint(0,3)]
 
 
