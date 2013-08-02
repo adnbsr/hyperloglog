@@ -1,21 +1,22 @@
 import khmer
 import screed
-
-
-from hashlib import sha1
+import random
 import bisect
 import math
 
+from hashlib import sha1
+
 class KmerCardinality(object):
 
-	def __init__(self,b,k):
+	def __init__(self,b,k,lower_limit,upper_limit):
 		self.k=k
 		self.b=b
-		self.bits=self.b
 		self.alpha=self.get_alpha(self.b)
-		self.num_bins= 1 << self.bits
-		self.bit_bins=[ 1L << i for i in range(160 - self.bits + 1) ]
+		self.num_bins= 1 << self.b
+		self.bit_bins=[ 1L << i for i in range(160 - self.b + 1) ]
 		self.estimators = [0 for i in range(self.num_bins)]
+		num=random.randint( lower_limit , upper_limit)
+		self.large_prime=self.get_large_prime(num,self.is_prime)
 	
 	def get_alpha(self, b):
 		
@@ -31,42 +32,57 @@ class KmerCardinality(object):
 
 		return 0.7213 / (1.0 + 1.079 / (1 << b))
 
+	def mrange(self,start, stop, step):
+		i = start
+		while i < stop:
+			yield i
+			i += step
+	
+	def is_prime(self,n):
+		if n == 2:
+			return True
+		if (n < 2) or (n % 2 == 0):
+			return False
+		return all(n % i for i in self.mrange(3, int(math.sqrt(n)) + 1, 2))
 
-	#def get_word(self, **args):
+	def get_large_prime(self,n, tester):
+		if tester(n):
+			n += 1
+		if (n % 2 == 0) and (n != 2):
+			n += 1
+		while True:
+			if tester(n):
+				break
+			n += 2
+		return n
+
 	def add(self,word):
+
+
+		hash = long(sha1(word).hexdigest(),16)
 		
-		hash = long(sha1(word).hexdigest(), 16)
-		
-		bin = hash & ((1 << self.bits) - 1)
-		remaining_bits = hash >> self.bits
+		bin = hash & ((1 << self.b) - 1)
+		remaining_bits = hash >> self.b
 		count = self.rho(remaining_bits)
 		self.estimators[bin] = max(self.estimators[bin], count)
 
 	def rho(self,w):
 		return len(self.bit_bins) - bisect.bisect_right(self.bit_bins, w)
 	
-
-
 	def cardinality(self):
 		E = self.alpha * float(len(self.estimators) ** 2) / sum(math.pow(2.0, -x) for x in self.estimators)
 		
-		if E <= 2.5 * self.bits:
+		if E <= 2.5 * self.b:
 			V = self.estimators.count(0)
-			return self.estimators * math.log(self.estimators/ float(V)) if V > 0 else E
-		elif E <= float(1L << 160) / 30.0:
-			return round(E)
+			return round(self.estimators * math.log(self.estimators/ float(V)))
 		else:
-			return -(1L << 160) * math.log(1.0 - E / (1L << 160))
+			return round(E)
 
 	def consume(self,sequence):
-		kt=khmer.new_ktable(self.k)
-		n=kt.consume(sequence)
-		for i in range(n):
+		num_kmers = len(sequence) - self.k + 1 
+		for i in range(num_kmers):
 			self.add(sequence[i:i+self.k])
-
-
-
-		
+	
 	def consume_fasta(self,fasta_file):
 		for record in screed.fasta.fasta_iter(open(fasta_file)):
 			self.consume(record['sequence'])

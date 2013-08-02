@@ -1,20 +1,19 @@
 import khmer
 import screed
 import random
-
-from hashlib import sha1
 import bisect
 import math
+
+from hashlib import sha1
 
 class KmerCardinality(object):
 
 	def __init__(self,b,k,lower_limit,upper_limit):
 		self.k=k
 		self.b=b
-		self.bits=self.b
 		self.alpha=self.get_alpha(self.b)
-		self.num_bins= 1 << self.bits
-		self.bit_bins=[ 1L << i for i in range(160 - self.bits + 1) ]
+		self.num_bins= 1 << self.b
+		self.bit_bins=[ 1L << i for i in range(160 - self.b + 1) ]
 		self.estimators = [0 for i in range(self.num_bins)]
 		num=random.randint( lower_limit , upper_limit)
 		self.large_prime=self.get_large_prime(num,self.is_prime)
@@ -57,46 +56,33 @@ class KmerCardinality(object):
 			n += 2
 		return n
 
-	#def get_word(self, **args):
 	def add(self,khmer_hash):
 
 
 		khmer_hash = khmer_hash % self.large_prime
-
-		bin = khmer_hash & ((1 << self.bits) - 1)
-		remaining_bits = khmer_hash >> self.bits
+		
+		bin = khmer_hash & ((1 << self.b) - 1)
+		remaining_bits = khmer_hash >> self.b
 		count = self.rho(remaining_bits)
 		self.estimators[bin] = max(self.estimators[bin], count)
 
 	def rho(self,w):
 		return len(self.bit_bins) - bisect.bisect_right(self.bit_bins, w)
 	
-
-
 	def cardinality(self):
 		E = self.alpha * float(len(self.estimators) ** 2) / sum(math.pow(2.0, -x) for x in self.estimators)
 		
-		if E <= 2.5 * self.bits:
+		if E <= 2.5 * self.b:
 			V = self.estimators.count(0)
-			return self.estimators * math.log(self.estimators/ float(V)) if V > 0 else E
-		elif E <= float(1L << 160) / 30.0:
-			return round(E)
+			return round(self.estimators * math.log(self.estimators/ float(V)))
 		else:
-			try:
-				return -(1L << 160) * math.log(1.0 - E / (1L << 160))
-			except ValueError:
-				pass
+			return round(E)
 
 	def consume(self,sequence):
-		kt=khmer.new_ktable(self.k)
-		n=kt.consume(sequence)
-		for i in range(n):
+		num_kmers = len(sequence) - self.k + 1 
+		for i in range(num_kmers):
 			self.add(khmer.forward_hash(sequence[i:i+self.k],self.k))
-
-
-
-
-		
+	
 	def consume_fasta(self,fasta_file):
 		for record in screed.fasta.fasta_iter(open(fasta_file)):
 			self.consume(record['sequence'])
